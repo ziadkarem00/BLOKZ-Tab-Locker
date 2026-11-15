@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BLOKZ — Tab Locker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ==================== 1. POPUP SECURITY GATE ==================== -->
+    <div id="popupAuthGate" class="auth-gate">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <div class="auth-brand">BLOKZ SECURITY</div>
+      <h2 id="gateTitle" class="auth-title">Enter 4-Digit PIN</h2>
+      <p id="gateSubtitle" class="auth-subtitle">
+        Enter your 4-digit PIN to edit locked domains or settings.
+      </p>
+
+      <!-- Step A: 4-Digit PIN Entry / Setup -->
+      <div id="gatePinStep">
+        <div class="gate-dots" id="gateDots">
+          <div class="gate-dot"></div>
+          <div class="gate-dot"></div>
+          <div class="gate-dot"></div>
+          <div class="gate-dot"></div>
+        </div>
+
+        <div id="gateError" class="gate-error"></div>
+
+        <div class="gate-keypad" id="gateKeypad">
+          <button type="button" class="gate-key" data-digit="1">1</button>
+          <button type="button" class="gate-key" data-digit="2">2</button>
+          <button type="button" class="gate-key" data-digit="3">3</button>
+          <button type="button" class="gate-key" data-digit="4">4</button>
+          <button type="button" class="gate-key" data-digit="5">5</button>
+          <button type="button" class="gate-key" data-digit="6">6</button>
+          <button type="button" class="gate-key" data-digit="7">7</button>
+          <button type="button" class="gate-key" data-digit="8">8</button>
+          <button type="button" class="gate-key" data-digit="9">9</button>
+          <button type="button" class="gate-key action" data-action="clear">CLR</button>
+          <button type="button" class="gate-key" data-digit="0">0</button>
+          <button type="button" class="gate-key action" data-action="back">⌫</button>
+        </div>
+
+        <button type="button" id="quickLockFromGateBtn" class="btn btn-ghost full-width">
+          🔒 Lock Current Tab Immediately
+        </button>
+      </div>
+
+      <!-- Step B: Security Question Setup (asked right after PIN setup) -->
+      <form id="gateCatStep" class="cat-step hidden">
+        <label class="cat-question-label" for="gateCatInput">What is your cat's name?</label>
+        <input
+          type="text"
+          id="gateCatInput"
+          class="cat-text-input"
+          maxlength="10"
+          placeholder="Max 10 characters"
+          autocomplete="off"
+          required
+        />
+        <div class="cat-char-note">Only up to 10 characters allowed. Required to uninstall or disable BLOKZ.</div>
+        <div id="gateCatError" class="gate-error"></div>
+        <button type="submit" class="btn btn-primary full-width">Save & Open Settings</button>
+      </form>
+    </div>
+
+    <!-- ==================== 2. UNLOCKED SETTINGS VIEW ==================== -->
+    <div id="popupMainContent" class="main-content hidden">
+      <!-- Top Header -->
+      <header class="header">
+        <div class="brand-group">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">BLOKZ</div>
+            <div class="brand-tag">Protected Settings</div>
+          </div>
+        </div>
+        <label class="switch" title="Enable or Disable BLOKZ (Requires Security Question to disable)">
+          <input type="checkbox" id="masterToggle" checked />
+          <span class="slider"></span>
+        </label>
+      </header>
+
+      <!-- Security Question Modal inside Popup (when trying to turn off or uninstall BLOKZ) -->
+      <form id="disableGuardBox" class="card disable-guard hidden">
+        <div class="section-label" id="guardActionLabel">SECURITY VERIFICATION REQUIRED</div>
+        <div class="cat-question-title">What is your cat's name?</div>
+        <input
+          type="text"
+          id="disableCatInput"
+          class="cat-text-input"
+          maxlength="10"
+          placeholder="Enter answer (max 10 chars)"
+          autocomplete="off"
+        />
+        <div id="disableCatError" class="feedback-msg error"></div>
+        <div class="quick-actions">
+          <button type="button" id="cancelDisableBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="confirmGuardBtn">Verify</button>
+        </div>
+      </form>
+
+      <!-- Active Tab Quick Controls -->
+      <section class="card current-tab-card">
+        <div class="current-site-row">
+          <div>
+            <div class="section-label">CURRENT TAB</div>
+            <div class="current-hostname" id="currentHostname">photos.google.com</div>
+          </div>
+          <span class="status-badge" id="currentTabBadge">Unlocked</span>
+        </div>
+        <div class="quick-actions">
+          <button id="lockTabNowBtn" class="btn btn-primary">
+            🔒 Lock This Tab Now
+          </button>
+          <button id="toggleSiteRuleBtn" class="btn btn-secondary">
+            + Always Lock Site
+          </button>
+        </div>
+        <button id="panicRelockBtn" class="btn btn-ghost">
+          ⚡ Re-Lock All Protected Tabs (Alt+Shift+L)
+        </button>
+      </section>
+
+      <!-- Quick Google & Web App Presets -->
+      <section class="card">
+        <div class="section-label">PROTECTED DOMAINS (PIN REQUIRED)</div>
+        <div class="preset-grid" id="presetGrid">
+          <button class="preset-chip" data-domain="photos.google.com">
+            <span>🖼️ Google Photos</span>
+            <span class="chip-state">OFF</span>
+          </button>
+          <button class="preset-chip" data-domain="web.whatsapp.com">
+            <span>💬 WhatsApp</span>
+            <span class="chip-state">OFF</span>
+          </button>
+          <button class="preset-chip" data-domain="drive.google.com">
+            <span>📁 Google Drive</span>
+            <span class="chip-state">OFF</span>
+          </button>
+          <button class="preset-chip" data-domain="mail.google.com">
+            <span>✉️ Gmail</span>
+            <span class="chip-state">OFF</span>
+          </button>
+        </div>
+
+        <!-- Custom Domain Input -->
+        <form id="addDomainForm" class="domain-form">
+          <input
+            type="text"
+            id="customDomainInput"
+            placeholder="Add domain (e.g. instagram.com)"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn-icon" title="Add Domain">+</button>
+        </form>
+
+        <!-- Active Locked Domains List -->
+        <div id="domainList" class="domain-list"></div>
+      </section>
+
+      <!-- Security & Auto-Lock Preferences -->
+      <section class="card">
+        <div class="section-label">SECURITY & AUTO-LOCK</div>
+        <label class="pref-row">
+          <span>Auto-lock when switching tabs</span>
+          <input type="checkbox" id="autoRelockSwitch" checked />
+        </label>
+        <label class="pref-row">
+          <span>Disguise locked tab title & icon</span>
+          <input type="checkbox" id="hideTitleSwitch" checked />
+        </label>
+        <div class="pref-row">
+          <span>Idle auto-relock timer</span>
+          <select id="idleTimeoutSelect" class="select-box">
+            <option value="1">1 min</option>
+            <option value="5" selected>5 mins</option>
+            <option value="15">15 mins</option>
+            <option value="0">Never</option>
+          </select>
+        </div>
+        <div class="quick-actions" style="margin-top:4px;">
+          <button type="button" id="openExtManagerBtn" class="btn btn-secondary">
+            🛡️ Web Extensions
+          </button>
+          <button type="button" id="uninstallBlokzBtn" class="btn btn-secondary" style="color:#FCA5A5;border-color:rgba(239,68,68,0.3);">
+            🗑️ Uninstall BLOKZ
+          </button>
+        </div>
+      </section>
+
+      <!-- Change 4-Digit PIN -->
+      <section class="card">
+        <div class="section-header-row">
+          <div class="section-label">CHANGE 4-DIGIT PIN</div>
+          <span class="pin-status-pill ready">PIN & Cat Lock Active ✓</span>
+        </div>
+        <form id="pinForm" class="pin-form">
+          <div class="pin-row">
+            <input
+              type="password"
+              id="currentPinInput"
+              class="pin-input"
+              maxlength="4"
+              inputmode="numeric"
+              pattern="\d{4}"
+              placeholder="Current PIN"
+              required
+            />
+            <input
+              type="password"
+              id="newPinInput"
+              class="pin-input"
+              maxlength="4"
+              inputmode="numeric"
+              pattern="\d{4}"
+              placeholder="New PIN"
+              required
+            />
+            <button type="submit" class="btn btn-accent">Save</button>
+          </div>
+          <div id="pinFeedback" class="feedback-msg"></div>
+        </form>
+      </section>
+
+      <!-- Extension Settings Footer Credit (Only inside Extension Settings) -->
+      <footer class="gh-footer">
+        <a
+          href="https://github.com/ziadkarem00"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="gh-link"
+          title="GitHub — ziadkarem00"
+        >
+          <img src="icons/ziad-emoji.png" alt="ziadkarem00" class="gh-emoji-icon" />
+          <span>ziadkarem00</span>
+        </a>
+      </footer>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
